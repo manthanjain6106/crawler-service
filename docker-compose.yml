@@ -11,15 +11,36 @@ services:
       - MAX_CONCURRENT_REQUESTS=10
       - RATE_LIMIT_PER_MINUTE=10
       - LOG_LEVEL=INFO
+      - REDIS_URL=redis://redis:6379
+      - USE_REDIS=true
     volumes:
       - ./logs:/app/logs
+      - ./data:/app/data
     restart: unless-stopped
+    depends_on:
+      - redis
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  crawler-worker:
+    build: .
+    command: python background_jobs.py
+    environment:
+      - LOG_LEVEL=INFO
+      - REDIS_URL=redis://redis:6379
+      - USE_REDIS=true
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    restart: unless-stopped
+    depends_on:
+      - redis
+    deploy:
+      replicas: 2  # Run 2 worker instances for better scalability
 
   redis:
     image: redis:7-alpine
@@ -29,6 +50,11 @@ services:
       - redis_data:/data
     restart: unless-stopped
     command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   redis_data:

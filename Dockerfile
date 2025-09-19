@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     g++ \
     libxml2-dev \
     libxslt-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching

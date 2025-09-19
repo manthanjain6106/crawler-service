@@ -9,3 +9,16 @@ python-multipart==0.0.6
 slowapi==0.1.9
 redis==5.0.1
 python-dotenv==1.0.0
+
+# Background job processing
+celery==5.3.4
+rq==1.15.1
+
+# Structured logging
+structlog==23.2.0
+python-json-logger==2.0.7
+
+# Storage backends
+motor==3.3.2  # MongoDB async driver
+pymongo==4.6.0  # MongoDB sync driver
+elasticsearch==8.11.0  # Elasticsearch client

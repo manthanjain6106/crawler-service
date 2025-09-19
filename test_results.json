@@ -1,0 +1,71 @@
+{
+  "start_time": "2025-09-19T12:56:14.930520",
+  "end_time": "2025-09-19T12:56:24.051056",
+  "total_tests": 6,
+  "passed_tests": 6,
+  "results": [
+    {
+      "test_name": "Import and Models",
+      "success": true,
+      "message": "All imports and models work correctly",
+      "data": {
+        "request_max_depth": 10,
+        "page_depth": 0
+      },
+      "timestamp": "2025-09-19T12:56:14.931509"
+    },
+    {
+      "test_name": "Crawler Initialization",
+      "success": true,
+      "message": "WebCrawler initialized successfully",
+      "data": {
+        "max_concurrent_requests": 5
+      },
+      "timestamp": "2025-09-19T12:56:14.931509"
+    },
+    {
+      "test_name": "Basic Crawling",
+      "success": true,
+      "message": "Basic crawling successful: 1 pages",
+      "data": {
+        "status": "completed",
+        "total_pages": 1,
+        "duration": 2.2208051681518555
+      },
+      "timestamp": "2025-09-19T12:56:17.153311"
+    },
+    {
+      "test_name": "Depth Tracking",
+      "success": true,
+      "message": "Depth tracking works: depths [0, 1]",
+      "data": {
+        "depths_found": [
+          0,
+          1
+        ],
+        "total_pages": 2
+      },
+      "timestamp": "2025-09-19T12:56:19.820495"
+    },
+    {
+      "test_name": "Unlimited Depth",
+      "success": true,
+      "message": "Unlimited depth works: 1 pages",
+      "data": {
+        "status": "completed",
+        "total_pages": 1
+      },
+      "timestamp": "2025-09-19T12:56:21.312482"
+    },
+    {
+      "test_name": "Internal Link Filtering",
+      "success": true,
+      "message": "Internal filtering works: True",
+      "data": {
+        "all_internal": true,
+        "total_pages": 1
+      },
+      "timestamp": "2025-09-19T12:56:24.050058"
+    }
+  ]
+}

@@ -1,0 +1,142 @@
+WEB CRAWLER MICROSERVICE - DATA FLOW VISUALIZATION
+==================================================
+
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           WEB CRAWLER MICROSERVICE                              │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+                    ┌─────────────────────────────────────────┐
+                    │            CLIENT LAYER                 │
+                    │  ┌─────────────┐  ┌─────────────────┐  │
+                    │  │   HTTP      │  │   API Consumer  │  │
+                    │  │  Requests   │  │   (External)    │  │
+                    │  └─────────────┘  └─────────────────┘  │
+                    └─────────────────────────────────────────┘
+                                      │
+                                      ▼
+                    ┌─────────────────────────────────────────┐
+                    │           FASTAPI LAYER                 │
+                    │  ┌─────────────┐  ┌─────────────────┐  │
+                    │  │   API       │  │   Rate Limiter  │  │
+                    │  │ Endpoints   │  │   (Per Request) │  │
+                    │  └─────────────┘  └─────────────────┘  │
+                    │  ┌─────────────┐  ┌─────────────────┐  │
+                    │  │   Request   │  │   Response      │  │
+                    │  │  Validation │  │   Formatting    │  │
+                    │  └─────────────┘  └─────────────────┘  │
+                    └─────────────────────────────────────────┘
+                                      │
+                                      ▼
+                    ┌─────────────────────────────────────────┐
+                    │         BACKGROUND JOB LAYER            │
+                    │  ┌─────────────┐  ┌─────────────────┐  │
+                    │  │   Redis     │  │   Job Queue     │  │
+                    │  │   Queue     │  │   Management    │  │
+                    │  └─────────────┘  └─────────────────┘  │
+                    │  ┌─────────────┐  ┌─────────────────┐  │
+                    │  │   Worker    │  │   Job Status    │  │
+                    │  │  Processes  │  │   Tracking      │  │
+                    │  └─────────────┘  └─────────────────┘  │
+                    └─────────────────────────────────────────┘
+                                      │
+                                      ▼
+                    ┌─────────────────────────────────────────┐
+                    │           STORAGE LAYER                 │
+                    │  ┌─────────────┐  ┌─────────────────┐  │
+                    │  │   Storage   │  │   Data Models   │  │
+                    │  │  Manager    │  │   (Pydantic)    │  │
+                    │  └─────────────┘  └─────────────────┘  │
+                    │  ┌─────────────┐  ┌─────────────────┐  │
+                    │  │   JSON      │  │   MongoDB       │  │
+                    │  │   Files     │  │   Database      │  │
+                    │  └─────────────┘  └─────────────────┘  │
+                    │  ┌─────────────┐                       │
+                    │  │Elasticsearch│                       │
+                    │  │   Search    │                       │
+                    │  └─────────────┘                       │
+                    └─────────────────────────────────────────┘
+                                      │
+                                      ▼
+                    ┌─────────────────────────────────────────┐
+                    │          CRAWLER ENGINE LAYER           │
+                    │  ┌─────────────┐  ┌─────────────────┐  │
+                    │  │   Web       │  │   Rate Limiter  │  │
+                    │  │  Crawler    │  │   (Per Domain)  │  │
+                    │  └─────────────┘  └─────────────────┘  │
+                    │  ┌─────────────┐  ┌─────────────────┐  │
+                    │  │   BFS       │  │   Error         │  │
+                    │  │ Algorithm   │  │   Handling      │  │
+                    │  └─────────────┘  └─────────────────┘  │
+                    │  ┌─────────────┐  ┌─────────────────┐  │
+                    │  │   Content   │  │   Retry         │  │
+                    │  │ Extraction  │  │   Logic         │  │
+                    │  └─────────────┘  └─────────────────┘  │
+                    └─────────────────────────────────────────┘
+                                      │
+                                      ▼
+                    ┌─────────────────────────────────────────┐
+                    │           EXTERNAL LAYER                │
+                    │  ┌─────────────┐  ┌─────────────────┐  │
+                    │  │   Target    │  │   HTTP          │  │
+                    │  │  Websites   │  │   Responses     │  │
+                    │  └─────────────┘  └─────────────────┘  │
+                    └─────────────────────────────────────────┘
+
+DATA FLOW SEQUENCE:
+==================
+
+1. REQUEST PHASE:
+   Client → FastAPI → Rate Limiter → Background Queue → Storage (Task Created)
+
+2. PROCESSING PHASE:
+   Background Worker → Web Crawler → Rate Limiter → HTTP Requests → Data Extraction
+
+3. STORAGE PHASE:
+   Crawled Data → Storage Manager → Storage Backend → Persistent Storage
+
+4. RESPONSE PHASE:
+   Storage → FastAPI → Client (Task Status/Results)
+
+KEY DATA STRUCTURES:
+===================
+
+CrawlRequest:
+- url: HttpUrl
+- max_depth: int
+- follow_links: bool
+- extract_text: bool
+- extract_images: bool
+- extract_links: bool
+- extract_headings: bool
+- custom_headers: Dict[str, str]
+
+CrawledPage:
+- url: str
+- title: str
+- text_content: str
+- images: List[str]
+- links: List[str]
+- headings: Dict[str, List[str]]
+- status_code: int
+- response_time: float
+- crawled_at: datetime
+- depth: int
+
+CrawlResult:
+- task_id: str
+- status: CrawlStatus
+- total_pages: int
+- pages: List[CrawledPage]
+- errors: List[str]
+- started_at: datetime
+- completed_at: datetime
+- duration: float
+
+CrawlTask:
+- task_id: str
+- request: CrawlRequest
+- status: CrawlStatus
+- result: Optional[CrawlResult]
+- job_id: Optional[str]
+- created_at: datetime
+- updated_at: datetime

@@ -1,84 +1,16 @@
 version: '3.8'
 
 services:
-  # Main crawler service
+  # Main crawler service (no storage, no background jobs)
   crawler-service:
     build: .
     ports:
       - "8000:8000"
     environment:
       - ENVIRONMENT=production
-      - STORAGE_TYPE=json
-      - ENABLE_BACKGROUND_JOBS=true
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      - redis
-    volumes:
-      - ./data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/live"]
       interval: 30s
       timeout: 10s
       retries: 3
-
-  # Redis for background jobs
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Background job worker
-  worker:
-    build: .
-    command: python -m app.services.background_jobs
-    environment:
-      - ENVIRONMENT=production
-      - STORAGE_TYPE=json
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      - redis
-    volumes:
-      - ./data:/app/data
-    restart: unless-stopped
-
-  # MongoDB (optional)
-  mongodb:
-    image: mongo:6
-    ports:
-      - "27017:27017"
-    environment:
-      - MONGO_INITDB_DATABASE=crawler_service
-    volumes:
-      - mongodb_data:/data/db
-    restart: unless-stopped
-    profiles:
-      - mongodb
-
-  # Elasticsearch (optional)
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
-    ports:
-      - "9200:9200"
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-    volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
-    restart: unless-stopped
-    profiles:
-      - elasticsearch
-
-volumes:
-  redis_data:
-  mongodb_data:
-  elasticsearch_data:

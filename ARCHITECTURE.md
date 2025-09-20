@@ -4,6 +4,48 @@
 
 This document describes the architecture of the Web Crawler Microservice, a production-ready service built with FastAPI that provides web crawling and data extraction capabilities.
 
+## Project Structure
+
+```
+crawler-service/
+├── app/                                    # Main application package
+│   ├── __init__.py
+│   ├── main.py                            # Application entry point
+│   ├── api/                               # API layer
+│   │   ├── __init__.py
+│   │   └── v1/                           # API version 1
+│   │       ├── __init__.py
+│   │       ├── admin.py                  # Admin endpoints
+│   │       ├── crawl.py                  # Crawling endpoints
+│   │       └── health.py                 # Health check endpoints
+│   ├── core/                             # Core application logic
+│   │   ├── __init__.py
+│   │   ├── config.py                     # Configuration settings
+│   │   ├── dependencies.py               # Dependency injection
+│   │   ├── exceptions.py                 # Custom exceptions
+│   │   └── logging.py                    # Logging configuration
+│   ├── middleware/                       # Custom middleware
+│   │   ├── __init__.py
+│   │   └── logging.py                    # Logging middleware
+│   ├── models/                           # Data models
+│   │   ├── __init__.py
+│   │   └── crawl_models.py              # Crawling data models
+│   └── services/                         # Business logic services
+│       ├── __init__.py
+│       ├── crawler.py                    # Main crawler service
+│       └── rate_limiter.py              # Rate limiting service
+├── scripts/                              # Utility scripts
+│   ├── start.bat                        # Windows startup script
+│   └── start.sh                         # Linux/Mac startup script
+├── ARCHITECTURE.md                       # Architecture documentation
+├── docker-compose.yml                    # Docker Compose configuration
+├── Dockerfile                           # Docker container definition
+├── env.example                          # Environment variables template
+├── README.md                            # Project documentation
+├── requirements.txt                     # Python dependencies
+└── start.py                             # Application startup script
+```
+
 ## Architecture Diagram
 
 ```
@@ -34,21 +76,21 @@ This document describes the architecture of the Web Crawler Microservice, a prod
 ┌─────────────────────────────────────────────────────────────────┐
 │                      Service Layer                              │
 ├─────────────────────────────────────────────────────────────────┤
-│  Crawler Service  │  Storage Service  │  Rate Limiter  │  Jobs │
-│  • Web Crawling   │  • JSON Files     │  • Per-Domain  │  • Redis │
-│  • Data Extract   │  • MongoDB        │  • Sliding Win │  • Async │
-│  • Concurrency    │  • Elasticsearch  │  • Configurable│  • Queue │
-│  • Retry Logic    │  • Abstraction    │  • Statistics  │  • Workers│
+│  Crawler Service  │  Rate Limiter  │  Logging Middleware       │
+│  • Web Crawling   │  • Per-Domain  │  • Request/Response       │
+│  • Data Extract   │  • Sliding Win │  • Structured Logging     │
+│  • Concurrency    │  • Configurable│  • Error Tracking         │
+│  • Retry Logic    │  • Statistics  │  • Performance Metrics    │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      Storage Layer                              │
+│                      Data Layer                                 │
 ├─────────────────────────────────────────────────────────────────┤
-│  JSON Files  │  MongoDB  │  Elasticsearch  │  Redis Queue      │
-│  • Development │  • Production │  • Search & Analytics │  • Jobs │
-│  • Simple     │  • Scalable  │  • Full-text Search    │  • State │
-│  • File-based │  • ACID     │  • Aggregations        │  • Cache │
+│  In-Memory Storage  │  File System  │  External APIs           │
+│  • Task Management  │  • Log Files  │  • Target Websites       │
+│  • Rate Limiting    │  • Config     │  • Health Checks         │
+│  • Session State    │  • Temp Data  │  • Monitoring            │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -93,9 +135,7 @@ This document describes the architecture of the Web Crawler Microservice, a prod
 
 **Components**:
 - `crawler.py` - Web crawling logic and data extraction
-- `storage.py` - Storage abstraction and management
 - `rate_limiter.py` - Per-domain rate limiting
-- `background_jobs.py` - Asynchronous job processing
 
 **Key Features**:
 - Separation of concerns
@@ -117,44 +157,43 @@ This document describes the architecture of the Web Crawler Microservice, a prod
 - JSON serialization
 - API documentation generation
 
-### 5. Storage Layer (`app/storage/`)
+### 5. Middleware Layer (`app/middleware/`)
 
-**Purpose**: Data persistence and retrieval abstraction.
+**Purpose**: Request/response processing and cross-cutting concerns.
 
 **Components**:
-- `json_storage.py` - File-based storage
-- `mongodb_storage.py` - MongoDB storage (to be implemented)
-- `elasticsearch_storage.py` - Elasticsearch storage (to be implemented)
+- `logging.py` - Request/response logging middleware
 
 **Key Features**:
-- Storage backend abstraction
-- Multiple storage options
-- Async operations
-- Error handling
+- Structured logging
+- Request/response tracking
+- Performance metrics
+- Error tracking
 
 ## Data Flow
 
 ### 1. Crawl Request Flow
 
 ```
-Client Request → API Gateway → FastAPI App → Crawler Service → Storage
+Client Request → API Gateway → FastAPI App → Crawler Service → Response
      ↓              ↓            ↓             ↓              ↓
-   HTTP POST    Rate Limit   Validation   Web Crawling   Save Results
+   HTTP POST    Rate Limit   Validation   Web Crawling   Return Results
      ↓              ↓            ↓             ↓              ↓
-   JSON Body    Check Limits  Parse Data   Extract Data   Persist Data
+   JSON Body    Check Limits  Parse Data   Extract Data   JSON Response
      ↓              ↓            ↓             ↓              ↓
    Response ←   Allow/Deny  ← Valid/Invalid ← Crawl Result ← Success/Error
 ```
 
-### 2. Background Job Flow
+### 2. Logging Flow
 
 ```
-API Request → Task Creation → Job Queue → Worker Process → Result Storage
-     ↓             ↓             ↓            ↓              ↓
-   Start Crawl   Create Task   Enqueue Job  Process Job   Save Results
-     ↓             ↓             ↓            ↓              ↓
-   Return Task   Store Task   Redis Queue  Async Worker   Update Task
-     ID           Metadata      State        Execution      Status
+Request → Logging Middleware → Structured Log → File System
+    ↓             ↓                ↓              ↓
+  HTTP Req    Add Metadata    JSON Format    Write to File
+    ↓             ↓                ↓              ↓
+  Response    Performance     Error Tracking   Log Rotation
+    ↓             ↓                ↓              ↓
+  Log Entry   Request ID      Status Codes    Archive Old
 ```
 
 ## Configuration Management
@@ -184,7 +223,8 @@ RATE_LIMIT_PER_MINUTE=10
 ENABLE_PER_DOMAIN_RATE_LIMITING=true
 
 # Storage
-STORAGE_TYPE=json  # json, mongodb, elasticsearch
+# Note: Current implementation uses in-memory storage
+# Future: Add persistent storage backends as needed
 ```
 
 ### Configuration Classes
@@ -237,7 +277,7 @@ All logs are structured JSON for production:
   "event_type": "crawl_started",
   "task_id": "uuid",
   "url": "https://example.com",
-  "max_depth": 2
+  "max_depth": 0
 }
 ```
 
@@ -276,29 +316,29 @@ All logs are structured JSON for production:
 │   Local Machine │
 ├─────────────────┤
 │  FastAPI App    │
-│  JSON Storage   │
-│  Redis (opt)    │
+│  In-Memory      │
+│  File Logging   │
 └─────────────────┘
 ```
 
 ### Production
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Load Balancer │    │   API Servers   │    │   Worker Nodes  │
-├─────────────────┤    ├─────────────────┤    ├─────────────────┤
-│  Nginx/HAProxy  │───▶│  FastAPI Apps   │    │  Background     │
-│  SSL Termination│    │  Multiple Inst  │    │  Job Workers    │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                                │                        │
-                                ▼                        ▼
-                       ┌─────────────────┐    ┌─────────────────┐
-                       │   Data Layer    │    │   Job Queue     │
-                       ├─────────────────┤    ├─────────────────┤
-                       │  MongoDB/ES     │    │     Redis       │
-                       │  Persistent     │    │  Job Processing │
-                       │  Storage        │    │  State Mgmt     │
-                       └─────────────────┘    └─────────────────┘
+┌─────────────────┐    ┌─────────────────┐
+│   Load Balancer │    │   API Servers   │
+├─────────────────┤    ├─────────────────┤
+│  Nginx/HAProxy  │───▶│  FastAPI Apps   │
+│  SSL Termination│    │  Multiple Inst  │
+└─────────────────┘    └─────────────────┘
+                                │
+                                ▼
+                       ┌─────────────────┐
+                       │   Data Layer    │
+                       ├─────────────────┤
+                       │  In-Memory      │
+                       │  File Logging   │
+                       │  Rate Limiting  │
+                       └─────────────────┘
 ```
 
 ## Security Considerations
@@ -329,8 +369,8 @@ All logs are structured JSON for production:
 ### Horizontal Scaling
 
 - Stateless API servers
-- Shared Redis for job queue
-- External storage backends
+- In-memory rate limiting (per instance)
+- File-based logging
 - Load balancer distribution
 
 ### Vertical Scaling
@@ -352,8 +392,8 @@ All logs are structured JSON for production:
 ### Integration Tests
 
 - API endpoint testing
-- Storage backend testing
-- Background job testing
+- Service layer testing
+- Middleware testing
 - End-to-end workflow testing
 
 ### Performance Tests

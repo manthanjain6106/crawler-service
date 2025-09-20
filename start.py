@@ -33,11 +33,7 @@ def start_api_server():
     )
 
 
-def start_worker():
-    """Start the background job worker."""
-    from app.services.background_jobs import start_worker
-    
-    asyncio.run(start_worker())
+# Background jobs are disabled - no worker functionality
 
 
 def main():
@@ -45,8 +41,8 @@ def main():
     parser = argparse.ArgumentParser(description="Crawler Microservice")
     parser.add_argument(
         "mode",
-        choices=["api", "worker"],
-        help="Mode to run: 'api' for the API server, 'worker' for background job worker"
+        choices=["api"],
+        help="Mode to run: 'api' for the API server"
     )
     parser.add_argument(
         "--config",
@@ -73,8 +69,6 @@ def main():
     try:
         if args.mode == "api":
             start_api_server()
-        elif args.mode == "worker":
-            start_worker()
     except KeyboardInterrupt:
         logger.info("Shutting down gracefully...")
     except Exception as e:

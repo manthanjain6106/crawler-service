@@ -9,8 +9,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.dependencies import (
     get_settings_dependency,
     get_logger_dependency,
-    get_storage_service_dependency,
-    get_background_job_service_dependency,
     get_rate_limiter_dependency,
     get_crawler_service_dependency
 )
@@ -43,95 +41,16 @@ async def get_rate_limits(
 
 
 @router.get("/storage/stats")
-async def get_storage_stats(
-    storage_service=Depends(get_storage_service_dependency)
-):
-    """Get storage statistics."""
-    try:
-        stats = await storage_service.get_storage_stats()
-        return stats
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+async def get_storage_stats():
+    """Get storage statistics - storage is disabled."""
+    return {
+        "status": "disabled",
+        "message": "Data storage is disabled - no data is persisted"
+    }
 
 
-@router.get("/jobs/queue/stats")
-async def get_job_queue_stats(
-    settings=Depends(get_settings_dependency),
-    background_job_service=Depends(get_background_job_service_dependency)
-):
-    """Get background job queue statistics."""
-    try:
-        if not settings.enable_background_jobs or background_job_service is None:
-            return {"status": "disabled", "message": "Background jobs are disabled"}
-        
-        stats = await background_job_service.get_queue_stats()
-        return stats
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/jobs/{job_id}/status")
-async def get_job_status(
-    job_id: str,
-    settings=Depends(get_settings_dependency),
-    background_job_service=Depends(get_background_job_service_dependency)
-):
-    """Get the status of a background job."""
-    try:
-        if not settings.enable_background_jobs or background_job_service is None:
-            raise HTTPException(status_code=400, detail="Background jobs are disabled")
-        
-        status = await background_job_service.get_job_status(job_id)
-        if not status:
-            raise HTTPException(status_code=404, detail="Job not found")
-        return status
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/jobs/{job_id}/cancel")
-async def cancel_job(
-    job_id: str,
-    settings=Depends(get_settings_dependency),
-    background_job_service=Depends(get_background_job_service_dependency)
-):
-    """Cancel a background job."""
-    try:
-        if not settings.enable_background_jobs or background_job_service is None:
-            raise HTTPException(status_code=400, detail="Background jobs are disabled")
-        
-        success = await background_job_service.cancel_job(job_id)
-        if success:
-            return {"message": "Job cancelled successfully"}
-        else:
-            raise HTTPException(status_code=400, detail="Job could not be cancelled")
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/jobs/cleanup")
-async def cleanup_old_jobs(
-    max_age_hours: int = 24,
-    settings=Depends(get_settings_dependency),
-    background_job_service=Depends(get_background_job_service_dependency)
-):
-    """Clean up old completed and failed jobs."""
-    try:
-        if not settings.enable_background_jobs or background_job_service is None:
-            raise HTTPException(status_code=400, detail="Background jobs are disabled")
-        
-        cleaned_count = await background_job_service.cleanup_old_jobs(max_age_hours)
-        return {
-            "message": f"Cleaned up {cleaned_count} old jobs",
-            "cleaned_count": cleaned_count,
-            "max_age_hours": max_age_hours
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# Note: Background job endpoints removed since we don't use background jobs anymore
+# All crawling is done synchronously and results are returned directly
 
 
 @router.get("/rate-limiter/stats")
@@ -188,3 +107,57 @@ async def remove_domain_rate_limit(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/stats")
+async def get_crawling_stats(
+    settings=Depends(get_settings_dependency),
+    crawler_service=Depends(get_crawler_service_dependency),
+    rate_limiter=Depends(get_rate_limiter_dependency)
+):
+    """Get crawling statistics and service metrics."""
+    try:
+        # Get rate limiter stats
+        rate_stats = crawler_service.get_rate_limiting_stats()
+        
+        # Get retry statistics
+        retry_stats = crawler_service.get_retry_stats()
+        
+        # Calculate uptime (using app start time from health module)
+        import time
+        from app.api.v1.health import app_start_time
+        uptime = time.time() - app_start_time
+        
+        return {
+            "service_info": {
+                "name": settings.app_name,
+                "version": settings.app_version,
+                "environment": settings.environment,
+                "uptime_seconds": uptime
+            },
+            "crawling_stats": {
+                "max_concurrent_requests": settings.max_concurrent_requests,
+                "default_timeout": settings.default_timeout,
+                "max_depth": settings.max_depth,
+                "retry_configuration": {
+                    "max_retries": settings.max_retries,
+                    "retry_delay_base": settings.retry_delay_base,
+                    "retry_delay_max": settings.retry_delay_max,
+                    "retry_backoff_multiplier": settings.retry_backoff_multiplier
+                }
+            },
+            "rate_limiting": {
+                "api_rate_limit": f"{settings.rate_limit_per_minute}/minute",
+                "per_domain_enabled": settings.enable_per_domain_rate_limiting,
+                "default_domain_limit": settings.default_domain_rate_limit,
+                "domain_specific_limits": settings.domain_specific_limits,
+                "current_stats": rate_stats
+            },
+            "retry_statistics": retry_stats,
+            "storage": {
+                "status": "disabled",
+                "message": "No data persistence - results returned directly"
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")

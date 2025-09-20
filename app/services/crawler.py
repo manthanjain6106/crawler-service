@@ -28,7 +28,7 @@ class CrawlerService:
     """Service for web crawling operations."""
     
     def __init__(self, storage_service, rate_limiter: RateLimitService):
-        self.storage_service = storage_service
+        self.storage_service = storage_service  # Can be None if storage is disabled
         self.rate_limiter = rate_limiter
         self.logger = get_logger(__name__)
         self.settings = get_settings()
@@ -43,6 +43,7 @@ class CrawlerService:
         self.burst_semaphore = asyncio.Semaphore(self.burst_limit)
         self.active_requests = 0
         self.request_lock = asyncio.Lock()
+        self._session_initialized = False
         
         # Retry statistics tracking
         self.retry_stats = {
@@ -64,8 +65,18 @@ class CrawlerService:
         if self.session:
             await self.session.close()
     
+    async def _ensure_session(self):
+        """Ensure the HTTP session is initialized."""
+        if not self._session_initialized or self.session is None:
+            timeout = aiohttp.ClientTimeout(total=self.settings.default_timeout)
+            self.session = aiohttp.ClientSession(timeout=timeout)
+            self._session_initialized = True
+    
     async def crawl_website(self, request: CrawlRequest) -> CrawlResult:
         """Crawl a website with queue-based BFS approach and improved concurrency."""
+        # Ensure session is initialized
+        await self._ensure_session()
+        
         task_id = f"crawl_{int(time.time())}"
         start_time = time.time()
         

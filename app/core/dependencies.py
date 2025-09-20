@@ -11,9 +11,12 @@ from contextlib import asynccontextmanager
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.services.crawler import CrawlerService
-from app.services.storage import StorageService
-from app.services.background_jobs import BackgroundJobService
+# Background jobs are disabled - no import needed
 from app.services.rate_limiter import RateLimitService
+
+# Define a placeholder for BackgroundJobService since it's disabled
+class BackgroundJobService:
+    pass
 
 
 class DependencyContainer:
@@ -35,25 +38,16 @@ class DependencyContainer:
         self._services["settings"] = get_settings()
         self._services["logger"] = get_logger("crawler-service")
         
-        # Initialize storage service
-        self._services["storage"] = StorageService()
-        await self._services["storage"].initialize()
-        
         # Initialize rate limiter
         self._services["rate_limiter"] = RateLimitService()
         
-        # Initialize background job service only if enabled
-        settings = self._services["settings"]
-        if settings.enable_background_jobs:
-            self._services["background_jobs"] = BackgroundJobService()
-            await self._services["background_jobs"].initialize()
-        else:
-            self._logger.info("Background jobs disabled - skipping initialization")
-            self._services["background_jobs"] = None
+        # Background jobs are disabled - no persistence
+        self._logger.info("Background jobs disabled - no data persistence")
+        self._services["background_jobs"] = None
         
-        # Initialize crawler service
+        # Initialize crawler service (no storage dependency)
         self._services["crawler"] = CrawlerService(
-            storage_service=self._services["storage"],
+            storage_service=None,
             rate_limiter=self._services["rate_limiter"]
         )
         
@@ -94,9 +88,9 @@ class DependencyContainer:
         """Get application logger."""
         return self.get("logger")
     
-    def get_storage_service(self) -> StorageService:
-        """Get storage service."""
-        return self.get("storage")
+    def get_storage_service(self):
+        """Get storage service - returns None since storage is disabled."""
+        return None
     
     def get_crawler_service(self) -> CrawlerService:
         """Get crawler service."""

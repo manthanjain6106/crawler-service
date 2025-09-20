@@ -39,13 +39,13 @@ class CrawlError(BaseModel):
 class CrawlRequest(BaseModel):
     """Request model for starting a crawl operation."""
     url: HttpUrl
-    max_depth: int = Field(default=10, ge=0, description="Maximum crawl depth (0 = unlimited)")
-    follow_links: bool = Field(default=True, description="Whether to follow internal links")
+    max_depth: int = Field(default=0, ge=0, description="Maximum crawl depth (0 = landing page only)")
+    follow_links: bool = Field(default=False, description="Whether to follow internal links")
     extract_text: bool = Field(default=True, description="Whether to extract text content")
-    extract_images: bool = Field(default=True, description="Whether to extract image URLs")
+    extract_images: bool = Field(default=False, description="Whether to extract image URLs")
     extract_links: bool = Field(default=True, description="Whether to extract links")
     extract_headings: bool = Field(default=True, description="Whether to extract headings (h1, h2, h3)")
-    extract_image_alt_text: bool = Field(default=True, description="Whether to extract image alt text")
+    extract_image_alt_text: bool = Field(default=False, description="Whether to extract image alt text")
     extract_canonical_url: bool = Field(default=True, description="Whether to extract canonical URL")
     custom_headers: Optional[Dict[str, str]] = Field(default=None, description="Custom HTTP headers")
     timeout: int = Field(default=30, ge=1, le=300, description="Request timeout in seconds")
@@ -54,13 +54,13 @@ class CrawlRequest(BaseModel):
         schema_extra = {
             "example": {
                 "url": "https://example.com",
-                "max_depth": 2,
-                "follow_links": True,
+                "max_depth": 0,
+                "follow_links": False,
                 "extract_text": True,
-                "extract_images": True,
+                "extract_images": False,
                 "extract_links": True,
                 "extract_headings": True,
-                "extract_image_alt_text": True,
+                "extract_image_alt_text": False,
                 "extract_canonical_url": True,
                 "timeout": 30
             }
@@ -116,8 +116,8 @@ class CrawlTask(BaseModel):
                 "task_id": "550e8400-e29b-41d4-a716-446655440000",
                 "request": {
                     "url": "https://example.com",
-                    "max_depth": 2,
-                    "follow_links": True
+                    "max_depth": 0,
+                    "follow_links": False
                 },
                 "status": "pending",
                 "created_at": "2023-01-01T00:00:00Z",

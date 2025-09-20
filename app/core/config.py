@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     concurrency_burst_limit: int = Field(default=50, env="CONCURRENCY_BURST_LIMIT")
     concurrency_gradual_increase: bool = Field(default=True, env="CONCURRENCY_GRADUAL_INCREASE")
     default_timeout: int = Field(default=30, env="DEFAULT_TIMEOUT")
-    max_depth: int = Field(default=10, env="MAX_DEPTH")
+    max_depth: int = Field(default=0, env="MAX_DEPTH")
     
     # Retry Configuration
     max_retries: int = Field(default=3, env="MAX_RETRIES")
@@ -53,30 +53,7 @@ class Settings(BaseSettings):
     retry_on_timeout: bool = Field(default=True, env="RETRY_ON_TIMEOUT")
     retry_on_connection_error: bool = Field(default=True, env="RETRY_ON_CONNECTION_ERROR")
     
-    # Background Jobs
-    enable_background_jobs: bool = Field(default=False, env="ENABLE_BACKGROUND_JOBS")
-    max_workers: int = Field(default=2, env="MAX_WORKERS")
-    job_timeout: int = Field(default=3600, env="JOB_TIMEOUT")
-    
-    # Redis Configuration
-    redis_url: str = Field(default="redis://localhost:6379", env="REDIS_URL")
-    use_redis: bool = Field(default=False, env="USE_REDIS")
-    
-    # Storage Configuration
-    storage_type: str = Field(default="json", env="STORAGE_TYPE")
-    storage_data_dir: str = Field(default="data", env="STORAGE_DATA_DIR")
-    
-    # MongoDB Configuration
-    mongodb_url: str = Field(default="mongodb://localhost:27017", env="MONGODB_URL")
-    mongodb_database: str = Field(default="crawler_service", env="MONGODB_DATABASE")
-    
-    # Elasticsearch Configuration
-    elasticsearch_hosts: List[str] = Field(default=["localhost:9200"], env="ELASTICSEARCH_HOSTS")
-    elasticsearch_cloud_id: Optional[str] = Field(default=None, env="ELASTICSEARCH_CLOUD_ID")
-    elasticsearch_api_key: Optional[str] = Field(default=None, env="ELASTICSEARCH_API_KEY")
-    elasticsearch_username: Optional[str] = Field(default=None, env="ELASTICSEARCH_USERNAME")
-    elasticsearch_password: Optional[str] = Field(default=None, env="ELASTICSEARCH_PASSWORD")
-    elasticsearch_index_prefix: str = Field(default="crawler", env="ELASTICSEARCH_INDEX_PREFIX")
+    # Note: Storage and background jobs are disabled - no data persistence
     
     # Logging Configuration
     log_level: str = Field(default="INFO", env="LOG_LEVEL")
@@ -106,12 +83,6 @@ class Settings(BaseSettings):
     def parse_cors_headers(cls, v):
         if isinstance(v, str):
             return [header.strip() for header in v.split(",")]
-        return v
-    
-    @validator("elasticsearch_hosts", pre=True)
-    def parse_elasticsearch_hosts(cls, v):
-        if isinstance(v, str):
-            return [host.strip() for host in v.split(",")]
         return v
     
     @validator("domain_specific_limits", pre=True)

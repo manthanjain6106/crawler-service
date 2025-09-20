@@ -1,47 +1,28 @@
 version: '3.8'
 
 services:
+  # Main crawler service
   crawler-service:
     build: .
     ports:
       - "8000:8000"
     environment:
-      - API_HOST=0.0.0.0
-      - API_PORT=8000
-      - MAX_CONCURRENT_REQUESTS=10
-      - RATE_LIMIT_PER_MINUTE=10
-      - LOG_LEVEL=INFO
+      - ENVIRONMENT=production
+      - STORAGE_TYPE=json
+      - ENABLE_BACKGROUND_JOBS=true
       - REDIS_URL=redis://redis:6379
-      - USE_REDIS=true
-    volumes:
-      - ./logs:/app/logs
-      - ./data:/app/data
-    restart: unless-stopped
     depends_on:
       - redis
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/live"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
 
-  crawler-worker:
-    build: .
-    command: python background_jobs.py
-    environment:
-      - LOG_LEVEL=INFO
-      - REDIS_URL=redis://redis:6379
-      - USE_REDIS=true
-    volumes:
-      - ./logs:/app/logs
-      - ./data:/app/data
-    restart: unless-stopped
-    depends_on:
-      - redis
-    deploy:
-      replicas: 2  # Run 2 worker instances for better scalability
-
+  # Redis for background jobs
   redis:
     image: redis:7-alpine
     ports:
@@ -49,12 +30,55 @@ services:
     volumes:
       - redis_data:/data
     restart: unless-stopped
-    command: redis-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
       timeout: 10s
       retries: 3
 
+  # Background job worker
+  worker:
+    build: .
+    command: python -m app.services.background_jobs
+    environment:
+      - ENVIRONMENT=production
+      - STORAGE_TYPE=json
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+
+  # MongoDB (optional)
+  mongodb:
+    image: mongo:6
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=crawler_service
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+    profiles:
+      - mongodb
+
+  # Elasticsearch (optional)
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    ports:
+      - "9200:9200"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+    profiles:
+      - elasticsearch
+
 volumes:
   redis_data:
+  mongodb_data:
+  elasticsearch_data:

@@ -1,24 +1,40 @@
+# Web Framework
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# HTTP Client
+aiohttp==3.9.1
 requests==2.31.0
+
+# HTML Parsing
 beautifulsoup4==4.12.2
 lxml==4.9.3
-aiohttp==3.9.1
-pydantic==2.5.0
-python-multipart==0.0.6
-slowapi==0.1.9
-redis==5.0.1
-python-dotenv==1.0.0
 
-# Background job processing
-celery==5.3.4
+# Data Validation
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Rate Limiting
+slowapi==0.1.9
+
+# Background Jobs
+redis==5.0.1
 rq==1.15.1
 
-# Structured logging
+# Configuration
+python-dotenv==1.0.0
+
+# Logging
 structlog==23.2.0
 python-json-logger==2.0.7
 
-# Storage backends
+# Storage Backends
 motor==3.3.2  # MongoDB async driver
 pymongo==4.6.0  # MongoDB sync driver
 elasticsearch==8.11.0  # Elasticsearch client
+
+# Development
+pytest==7.4.3
+pytest-asyncio==0.21.1
+httpx==0.25.2  # For testing FastAPI
